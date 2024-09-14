@@ -1,4 +1,5 @@
 document.addEventListener('DOMContentLoaded', () => {
+    // Initialize the map
     const map = L.map('map').setView([25.325366, 55.388962], 11);
 
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -9,7 +10,7 @@ document.addEventListener('DOMContentLoaded', () => {
         icon: L.icon({ iconUrl: 'mb.png', iconSize: [40, 40] })
     }).addTo(map);
 
-    // Add neighborhood markers
+    // Neighborhood data
     const neighborhoods = {
         'Al Nahda': [25.303810, 55.377176],
         'Al Majaz': [25.325366, 55.388962],
@@ -42,17 +43,12 @@ document.addEventListener('DOMContentLoaded', () => {
         'Al Sidairah': [25.351180, 55.691388]
     };
 
-    Object.entries(neighborhoods).forEach(([name, [lat, lng]]) => {
-        L.marker([lat, lng], {
-            icon: L.divIcon({
-                className: 'neighborhood-marker',
-                html: `<div style="background-color: ${getColorForScore(randomScore())};">${name}</div>`
-            })
-        }).addTo(map).on('click', () => {
-            alert(`${name}: Crime Score ${randomScore()}`);
-        });
-    });
+    // Function to generate a random crime score
+    function randomScore() {
+        return Math.floor(Math.random() * 5) + 1;
+    }
 
+    // Function to get color based on the crime score
     function getColorForScore(score) {
         switch (score) {
             case 1: return 'green';
@@ -64,9 +60,17 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    function randomScore() {
-        return Math.floor(Math.random() * 5) + 1;
-    }
+    // Add neighborhood markers
+    Object.entries(neighborhoods).forEach(([name, [lat, lng]]) => {
+        L.marker([lat, lng], {
+            icon: L.divIcon({
+                className: 'neighborhood-marker',
+                html: `<div style="background-color: ${getColorForScore(randomScore())};">${name}</div>`
+            })
+        }).addTo(map).on('click', () => {
+            alert(`${name}: Crime Score ${randomScore()}`);
+        });
+    });
 
     // Add crime data
     const crimeData = [
@@ -82,23 +86,55 @@ document.addEventListener('DOMContentLoaded', () => {
         crimeList.appendChild(li);
     });
 
-    // Handle search
+    // Handle search suggestions
+    const suggestionsList = document.getElementById('suggestions');
+    
+    function displaySuggestions(query) {
+        suggestionsList.innerHTML = '';
+        const matchedNeighborhoods = Object.keys(neighborhoods).filter(name => name.toLowerCase().includes(query));
+        
+        if (matchedNeighborhoods.length > 0) {
+            matchedNeighborhoods.forEach(name => {
+                const li = document.createElement('li');
+                li.textContent = name;
+                li.addEventListener('click', () => {
+                    document.getElementById('search').value = name;
+                    suggestionsList.innerHTML = ''; // Clear suggestions
+                    handleSearch(name);
+                });
+                suggestionsList.appendChild(li);
+            });
+        }
+    }
+
+    document.getElementById('search').addEventListener('input', (event) => {
+        const query = event.target.value.toLowerCase();
+        if (query) {
+            displaySuggestions(query);
+        } else {
+            suggestionsList.innerHTML = ''; // Clear suggestions when input is empty
+        }
+    });
+
     document.getElementById('search').addEventListener('keyup', (event) => {
         if (event.key === 'Enter') {
             const query = event.target.value.toLowerCase();
             const neighborhood = Object.keys(neighborhoods).find(name => name.toLowerCase() === query);
-
             if (neighborhood) {
-                const [lat, lng] = neighborhoods[neighborhood];
-                map.setView([lat, lng], 14);
-                L.marker([lat, lng], {
-                    icon: L.icon({ iconUrl: 'mr.png', iconSize: [40, 40] })
-                }).addTo(map);
+                handleSearch(neighborhood);
             } else {
                 alert('Neighborhood not found.');
             }
         }
     });
+
+    function handleSearch(neighborhood) {
+        const [lat, lng] = neighborhoods[neighborhood];
+        map.setView([lat, lng], 14);
+        L.marker([lat, lng], {
+            icon: L.icon({ iconUrl: 'mr.png', iconSize: [40, 40] })
+        }).addTo(map);
+    }
 
     // Handle get directions button
     document.getElementById('get-directions').addEventListener('click', () => {
@@ -129,6 +165,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
+    // Handle emergency button
     document.getElementById('emergency').addEventListener('click', () => {
         if (navigator.geolocation) {
             navigator.geolocation.getCurrentPosition(position => {
@@ -142,7 +179,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     })
                 }).addTo(map);
 
-                alert('Authorites have been alerted the are arriving at your location!!');
+                alert('Authorities have been alerted and are arriving');
 
             }, () => {
                 alert('Unable to retrieve your location.');
